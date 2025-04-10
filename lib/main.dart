@@ -1,75 +1,177 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(VisitCountriesApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
+/// Основное приложение
+class VisitCountriesApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Travel Manager App',
+      title: 'Страны для посещения',
       theme: ThemeData(
-        useMaterial3: true, // Enabling Material Design 3
         primarySwatch: Colors.blue,
       ),
-      home: const AboutPage(),
-      debugShowCheckedModeBanner: false,
+      home: HomeScreen(),
     );
   }
 }
 
-class AboutPage extends StatelessWidget {
-  const AboutPage({Key? key}) : super(key: key);
+/// Главный экран приложения
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // Контроллер для управления текстовым полем ввода
+  final TextEditingController _controller = TextEditingController();
+  // Список для хранения введённых пользователем стран
+  final List<String> _countries = [];
+
+  /// Метод для добавления новой страны в список
+  void _addCountry() {
+    String text = _controller.text.trim();
+    if (text.isNotEmpty) {
+      setState(() {
+        _countries.add(text);
+      });
+      _controller.clear();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Определяем ориентацию экрана через MediaQuery
+    var orientation = MediaQuery.of(context).orientation;
+    final bool isPortrait = orientation == Orientation.portrait;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('About'),
+        title: const Text('Страны для посещения'),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Travel Manager App',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Travel Manager App is an innovative travel planning tool that allows users to select the country they wish to visit. The app then generates optimal routes from the user’s current location, helping to save time and streamline travel plans.',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 24),
-                  Text(
-                    'Developed by Bexultan Yessirkegen Team Solo in the scope of the course “Crossplatform Development” at Astana IT University.\n'
-                        'Mentor (Teacher): Assistant Professor Abzal Kyzyrkanov',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
+      // OrientationBuilder позволяет менять макет при изменении ориентации экрана
+      body: OrientationBuilder(
+        builder: (context, orientation) {
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout(),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Построение макета для портретного режима
+  Widget _buildPortraitLayout() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Ряд с текстовым полем и кнопкой добавления
+        Row(
+          children: [
+            // Expanded для текстового поля, чтобы оно занимало всё доступное место
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                decoration: const InputDecoration(
+                  hintText: 'Введите страну',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _addCountry(),
               ),
+            ),
+            const SizedBox(width: 8.0),
+            ElevatedButton(
+              onPressed: _addCountry,
+              child: const Text('Добавить'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16.0),
+        // Расширяемый виджет со списком стран
+        Expanded(
+          child: _countries.isNotEmpty
+              ? ListView.builder(
+            itemCount: _countries.length,
+            itemBuilder: (context, index) {
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Text(
+                    _countries[index],
+                    style: const TextStyle(fontSize: 18.0),
+                  ),
+                ),
+              );
+            },
+          )
+              : const Center(
+            child: Text(
+              'Список стран пуст',
+              style: TextStyle(fontSize: 18.0),
             ),
           ),
         ),
-      ),
+      ],
+    );
+  }
+
+  /// Построение макета для ландшафтного режима
+  Widget _buildLandscapeLayout() {
+    return Row(
+      children: [
+        // Левая часть: блок ввода страны
+        Expanded(
+          flex: 2,
+          child: Column(
+            children: [
+              TextField(
+                controller: _controller,
+                decoration: const InputDecoration(
+                  hintText: 'Введите страну',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _addCountry(),
+              ),
+              const SizedBox(height: 8.0),
+              ElevatedButton(
+                onPressed: _addCountry,
+                child: const Text('Добавить'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16.0),
+        // Правая часть: список добавленных стран
+        Expanded(
+          flex: 3,
+          child: _countries.isNotEmpty
+              ? ListView.builder(
+            itemCount: _countries.length,
+            itemBuilder: (context, index) {
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Text(
+                    _countries[index],
+                    style: const TextStyle(fontSize: 18.0),
+                  ),
+                ),
+              );
+            },
+          )
+              : const Center(
+            child: Text(
+              'Список стран пуст',
+              style: TextStyle(fontSize: 18.0),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
