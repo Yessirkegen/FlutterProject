@@ -1,177 +1,598 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 void main() {
-  runApp(VisitCountriesApp());
+  runApp(const MyApp());
 }
 
-/// Основное приложение
-class VisitCountriesApp extends StatelessWidget {
+/// Локализация приложения с поддержкой языков: английский, русский, казахский.
+class AppLocalizations {
+  final Locale locale;
+
+  AppLocalizations(this.locale);
+
+  // Метод для быстрого доступа к экземпляру локализаций через BuildContext.
+  static AppLocalizations? of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations);
+  }
+
+  // Карта переводов для используемых ключей.
+  static const Map<String, Map<String, String>> _localizedValues = {
+    'en': {
+      'title': 'Travel Planner',
+      'home': 'Home',
+      'about': 'About',
+      'route': 'Route Planner',
+      'inputCountries': 'Enter countries:',
+      'calculateRoute': 'Calculate Optimal Route',
+      'toggleInfo': 'Tap to toggle info',
+      'longPressMsg': 'Long Press Detected!',
+      'extraInfo': 'Extra info about route',
+      'addCountry': 'Add Country',
+      'routeCountries': 'Countries:',
+      'optimalRoute': 'Optimal Route:',
+      'aboutDescription':
+      'This travel planner app demonstrates a fully functional Flutter project with interactive pages, gestures, and real map integration using OpenStreetMap.',
+    },
+    'ru': {
+      'title': 'Планировщик путешествий',
+      'home': 'Главная',
+      'about': 'О программе',
+      'route': 'Планировщик маршрута',
+      'inputCountries': 'Введите страны:',
+      'calculateRoute': 'Рассчитать оптимальный маршрут',
+      'toggleInfo': 'Нажми для показа информации',
+      'longPressMsg': 'Обнаружено долгое нажатие!',
+      'extraInfo': 'Дополнительная информация о маршруте',
+      'addCountry': 'Добавить страну',
+      'routeCountries': 'Страны:',
+      'optimalRoute': 'Оптимальный маршрут:',
+      'aboutDescription':
+      'Это приложение для планирования путешествий демонстрирует функциональный проект на Flutter с интерактивными страницами, жестами и интеграцией реальной карты через OpenStreetMap.',
+    },
+    'kk': {
+      'title': 'Саяхат жоспарлаушы',
+      'home': 'Басты бет',
+      'about': 'Бағдарлама туралы',
+      'route': 'Маршрут жоспарлаушы',
+      'inputCountries': 'Елдерді енгізіңіз:',
+      'calculateRoute': 'Оптималды маршрутты есептеу',
+      'toggleInfo': 'Ақпаратты көрсету үшін басыңыз',
+      'longPressMsg': 'Ұзақ басу анықталды!',
+      'extraInfo': 'Маршрут туралы қосымша ақпарат',
+      'addCountry': 'Елді қосу',
+      'routeCountries': 'Елдер:',
+      'optimalRoute': 'Оптималды маршрут:',
+      'aboutDescription':
+      'Бұл Flutter жобасының тапсырмасы аясында жасалған саяхат жоспарлаушы қосымша. Онда интерактивті беттер, жесттер және OpenStreetMap арқылы нақты карта интеграциясы бар.',
+    },
+  };
+
+  // Метод для получения перевода по ключу.
+  String translate(String key) {
+    return _localizedValues[locale.languageCode]?[key] ??
+        _localizedValues['kk']![key] ??
+        key;
+  }
+}
+
+/// Делегат для загрузки локализаций.
+class AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+  const AppLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) =>
+      ['en', 'ru', 'kk'].contains(locale.languageCode);
+
+  @override
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(AppLocalizations(locale));
+  }
+
+  @override
+  bool shouldReload(AppLocalizationsDelegate old) => false;
+}
+
+/// Основной виджет приложения.
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Страны для посещения',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: HomeScreen(),
+      title: 'Travel Planner',
+      theme: ThemeData.light(),
+      darkTheme: ThemeData.dark(),
+      themeMode: ThemeMode.system,
+      supportedLocales: const [
+        Locale('en'),
+        Locale('ru'),
+        Locale('kk'),
+      ],
+      localizationsDelegates: const [
+        AppLocalizationsDelegate(),
+      ],
+      localeResolutionCallback: (locale, supportedLocales) {
+        if (locale == null) return const Locale('kk');
+        for (var supportedLocale in supportedLocales) {
+          if (supportedLocale.languageCode == locale.languageCode) {
+            return supportedLocale;
+          }
+        }
+        return const Locale('kk');
+      },
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const HomePage(),
+        '/about': (context) => const AboutPage(),
+        '/route': (context) => const RoutePage(),
+      },
     );
   }
 }
 
-/// Главный экран приложения
-class HomeScreen extends StatefulWidget {
+/// Главный экран приложения с динамическим UI и обработкой жестов.
+class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  _HomePageState createState() => _HomePageState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  // Контроллер для управления текстовым полем ввода
-  final TextEditingController _controller = TextEditingController();
-  // Список для хранения введённых пользователем стран
-  final List<String> _countries = [];
-
-  /// Метод для добавления новой страны в список
-  void _addCountry() {
-    String text = _controller.text.trim();
-    if (text.isNotEmpty) {
-      setState(() {
-        _countries.add(text);
-      });
-      _controller.clear();
-    }
-  }
+class _HomePageState extends State<HomePage> {
+  bool showExtraInfo = false;
+  final TextEditingController _countryController = TextEditingController();
+  List<String> addedCountries = [];
 
   @override
   Widget build(BuildContext context) {
-    // Определяем ориентацию экрана через MediaQuery
-    var orientation = MediaQuery.of(context).orientation;
-    final bool isPortrait = orientation == Orientation.portrait;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Страны для посещения'),
-      ),
-      // OrientationBuilder позволяет менять макет при изменении ориентации экрана
-      body: OrientationBuilder(
-        builder: (context, orientation) {
-          return Padding(
+    final localization = AppLocalizations.of(context)!;
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(localization.translate('title')),
+          ),
+          drawer: Drawer(
+            child: ListView(
+              children: [
+                ListTile(
+                  title: Text(localization.translate('home')),
+                  onTap: () {
+                    Navigator.pushReplacementNamed(context, '/');
+                  },
+                ),
+                ListTile(
+                  title: Text(localization.translate('route')),
+                  onTap: () {
+                    Navigator.pushReplacementNamed(context, '/route');
+                  },
+                ),
+                ListTile(
+                  title: Text(localization.translate('about')),
+                  onTap: () {
+                    Navigator.pushReplacementNamed(context, '/about');
+                  },
+                ),
+              ],
+            ),
+          ),
+          body: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: isPortrait ? _buildPortraitLayout() : _buildLandscapeLayout(),
-          );
-        },
-      ),
+            child: orientation == Orientation.portrait
+                ? _buildVerticalLayout(localization)
+                : _buildHorizontalLayout(localization),
+          ),
+        );
+      },
     );
   }
 
-  /// Построение макета для портретного режима
-  Widget _buildPortraitLayout() {
+  // Вертикальная раскладка (портрет)
+  Widget _buildVerticalLayout(AppLocalizations localization) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Ряд с текстовым полем и кнопкой добавления
-        Row(
-          children: [
-            // Expanded для текстового поля, чтобы оно занимало всё доступное место
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                decoration: const InputDecoration(
-                  hintText: 'Введите страну',
-                  border: OutlineInputBorder(),
-                ),
-                onSubmitted: (_) => _addCountry(),
+        // Жесты: tap для переключения информации и long press для показа Snackbar
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              showExtraInfo = !showExtraInfo;
+            });
+          },
+          onLongPress: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(localization.translate('longPressMsg')),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(
+                localization.translate('toggleInfo'),
+                style: const TextStyle(color: Colors.white, fontSize: 18),
               ),
             ),
-            const SizedBox(width: 8.0),
-            ElevatedButton(
-              onPressed: _addCountry,
-              child: const Text('Добавить'),
-            ),
-          ],
+          ),
         ),
-        const SizedBox(height: 16.0),
-        // Расширяемый виджет со списком стран
+        const SizedBox(height: 10),
+        if (showExtraInfo)
+          Text(
+            localization.translate('extraInfo'),
+            style: const TextStyle(fontSize: 16),
+          ),
+        const SizedBox(height: 20),
+        TextField(
+          controller: _countryController,
+          decoration: InputDecoration(
+            labelText: localization.translate('inputCountries'),
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton(
+          onPressed: () {
+            if (_countryController.text.isNotEmpty) {
+              setState(() {
+                addedCountries.add(_countryController.text);
+                _countryController.clear();
+              });
+            }
+          },
+          child: Text(localization.translate('addCountry')),
+        ),
+        const SizedBox(height: 20),
         Expanded(
-          child: _countries.isNotEmpty
-              ? ListView.builder(
-            itemCount: _countries.length,
+          child: ListView.builder(
+            itemCount: addedCountries.length,
             itemBuilder: (context, index) {
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4.0),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Text(
-                    _countries[index],
-                    style: const TextStyle(fontSize: 18.0),
-                  ),
-                ),
+              return ListTile(
+                title: Text(addedCountries[index]),
               );
             },
-          )
-              : const Center(
-            child: Text(
-              'Список стран пуст',
-              style: TextStyle(fontSize: 18.0),
-            ),
           ),
         ),
       ],
     );
   }
 
-  /// Построение макета для ландшафтного режима
-  Widget _buildLandscapeLayout() {
+  // Горизонтальная раскладка (ландшафт)
+  Widget _buildHorizontalLayout(AppLocalizations localization) {
     return Row(
       children: [
-        // Левая часть: блок ввода страны
         Expanded(
-          flex: 2,
+          flex: 1,
+          child: Column(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    showExtraInfo = !showExtraInfo;
+                  });
+                },
+                onLongPress: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(localization.translate('longPressMsg')),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(10)),
+                  child: Center(
+                    child: Text(
+                      localization.translate('toggleInfo'),
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 18),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (showExtraInfo)
+                Text(
+                  localization.translate('extraInfo'),
+                  style: const TextStyle(fontSize: 16),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          flex: 1,
           child: Column(
             children: [
               TextField(
-                controller: _controller,
-                decoration: const InputDecoration(
-                  hintText: 'Введите страну',
-                  border: OutlineInputBorder(),
+                controller: _countryController,
+                decoration: InputDecoration(
+                  labelText: localization.translate('inputCountries'),
+                  border: const OutlineInputBorder(),
                 ),
-                onSubmitted: (_) => _addCountry(),
               ),
-              const SizedBox(height: 8.0),
+              const SizedBox(height: 10),
               ElevatedButton(
-                onPressed: _addCountry,
-                child: const Text('Добавить'),
+                onPressed: () {
+                  if (_countryController.text.isNotEmpty) {
+                    setState(() {
+                      addedCountries.add(_countryController.text);
+                      _countryController.clear();
+                    });
+                  }
+                },
+                child: Text(localization.translate('addCountry')),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: addedCountries.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(addedCountries[index]),
+                    );
+                  },
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(width: 16.0),
-        // Правая часть: список добавленных стран
-        Expanded(
-          flex: 3,
-          child: _countries.isNotEmpty
-              ? ListView.builder(
-            itemCount: _countries.length,
-            itemBuilder: (context, index) {
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4.0),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Text(
-                    _countries[index],
-                    style: const TextStyle(fontSize: 18.0),
-                  ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    _countryController.dispose();
+    super.dispose();
+  }
+}
+
+/// Страница "О программе"
+class AboutPage extends StatelessWidget {
+  const AboutPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(localization.translate('about')),
+          ),
+          drawer: Drawer(
+            child: ListView(
+              children: [
+                ListTile(
+                  title: Text(localization.translate('home')),
+                  onTap: () {
+                    Navigator.pushReplacementNamed(context, '/');
+                  },
                 ),
-              );
-            },
-          )
-              : const Center(
-            child: Text(
-              'Список стран пуст',
-              style: TextStyle(fontSize: 18.0),
+                ListTile(
+                  title: Text(localization.translate('route')),
+                  onTap: () {
+                    Navigator.pushReplacementNamed(context, '/route');
+                  },
+                ),
+                ListTile(
+                  title: Text(localization.translate('about')),
+                  onTap: () {
+                    Navigator.pushReplacementNamed(context, '/about');
+                  },
+                ),
+              ],
             ),
           ),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                localization.translate('aboutDescription'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Страница с функционалом планирования маршрута с реальной картой через OpenStreetMap.
+class RoutePage extends StatefulWidget {
+  const RoutePage({Key? key}) : super(key: key);
+
+  @override
+  _RoutePageState createState() => _RoutePageState();
+}
+
+class _RoutePageState extends State<RoutePage> {
+  List<String> countries = [];
+  List<String> route = [];
+  final TextEditingController _routeCountryController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    final localization = AppLocalizations.of(context)!;
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(localization.translate('route')),
+          ),
+          drawer: Drawer(
+            child: ListView(
+              children: [
+                ListTile(
+                  title: Text(localization.translate('home')),
+                  onTap: () {
+                    Navigator.pushReplacementNamed(context, '/');
+                  },
+                ),
+                ListTile(
+                  title: Text(localization.translate('route')),
+                  onTap: () {
+                    Navigator.pushReplacementNamed(context, '/route');
+                  },
+                ),
+                ListTile(
+                  title: Text(localization.translate('about')),
+                  onTap: () {
+                    Navigator.pushReplacementNamed(context, '/about');
+                  },
+                ),
+              ],
+            ),
+          ),
+          body: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: orientation == Orientation.portrait
+                ? _buildVerticalLayout(localization)
+                : _buildHorizontalLayout(localization),
+          ),
+        );
+      },
+    );
+  }
+
+  // Вертикальная раскладка для страницы маршрута
+  Widget _buildVerticalLayout(AppLocalizations localization) {
+    return Column(
+      children: [
+        TextField(
+          controller: _routeCountryController,
+          decoration: InputDecoration(
+            labelText: localization.translate('inputCountries'),
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton(
+          onPressed: () {
+            if (_routeCountryController.text.isNotEmpty) {
+              setState(() {
+                countries.add(_routeCountryController.text);
+                _routeCountryController.clear();
+              });
+            }
+          },
+          child: Text(localization.translate('addCountry')),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton(
+          onPressed: () {
+            // Симуляция расчёта маршрута: переворот списка введённых стран.
+            setState(() {
+              route = List.from(countries.reversed);
+            });
+          },
+          child: Text(localization.translate('calculateRoute')),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '${localization.translate('routeCountries')} ${countries.join(', ')}',
+          style: const TextStyle(fontSize: 16),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '${localization.translate('optimalRoute')} ${route.join(' -> ')}',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 20),
+        Expanded(
+          child: _buildMapWidget(),
         ),
       ],
     );
+  }
+
+  // Горизонтальная раскладка для страницы маршрута
+  Widget _buildHorizontalLayout(AppLocalizations localization) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            children: [
+              TextField(
+                controller: _routeCountryController,
+                decoration: InputDecoration(
+                  labelText: localization.translate('inputCountries'),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () {
+                  if (_routeCountryController.text.isNotEmpty) {
+                    setState(() {
+                      countries.add(_routeCountryController.text);
+                      _routeCountryController.clear();
+                    });
+                  }
+                },
+                child: Text(localization.translate('addCountry')),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    route = List.from(countries.reversed);
+                  });
+                },
+                child: Text(localization.translate('calculateRoute')),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '${localization.translate('routeCountries')} ${countries.join(', ')}',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '${localization.translate('optimalRoute')} ${route.join(' -> ')}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _buildMapWidget(),
+        ),
+      ],
+    );
+  }
+
+  // Виджет с картой, интегрированной через flutter_map и OpenStreetMap.
+  Widget _buildMapWidget() {
+    return FlutterMap(
+      options: MapOptions(
+        initialCenter: LatLng(43.238949, 76.889709), // Changed from 'center' to 'initialCenter'
+        initialZoom: 12.0, // Changed from 'zoom' to 'initialZoom'
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          subdomains: const ['a', 'b', 'c'],
+          userAgentPackageName: 'com.example.travelplanner',
+        ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    _routeCountryController.dispose();
+    super.dispose();
   }
 }
