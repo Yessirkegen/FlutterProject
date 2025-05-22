@@ -23,115 +23,104 @@ workflows:
   ios-workflow:
     name: iOS Workflow
     instance_type: mac_mini_m1
-    max_build_duration: 60
+    max_build_duration: 120
     environment:
       flutter: 3.19.6
       xcode: latest
       cocoapods: default
-      groups:
-        - google_credentials
       vars:
-        FIREBASE_PROJECT: ${{ secrets.FIREBASE_PROJECT }}
         BUNDLE_ID: "com.example.travelManager"
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
-        MIN_IOS_VERSION: "13.0"
     scripts:
       - name: Set up Flutter
         script: |
           flutter clean
           flutter pub get
-      - name: Configure Podfile
+      - name: Configure iOS project
         script: |
           cd ios
+          
+          # Update all deployment targets to iOS 13.0
+          find . -name "*.pbxproj" -exec plutil -convert xml1 {} \; -exec sed -i '' 's/\([0-9]\{1,2\}\)\.\([0-9]\{1,2\}\)/13.0/g' {} \;
+          
+          # Create a minimal Podfile
           cat > Podfile << EOL
-          # Uncomment this line to define a global platform for your project
           platform :ios, '13.0'
-
+          
           # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
           ENV['COCOAPODS_DISABLE_STATS'] = 'true'
-
+          
           project 'Runner', {
             'Debug' => :debug,
             'Profile' => :release,
             'Release' => :release,
           }
-
-          # Explicitly specify workspace
+          
           workspace 'Runner.xcworkspace'
-
+          
           def flutter_root
             generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
             unless File.exist?(generated_xcode_build_settings_path)
               raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
             end
-
+          
             File.foreach(generated_xcode_build_settings_path) do |line|
               matches = line.match(/FLUTTER_ROOT\=(.*)/)
               return matches[1].strip if matches
             end
             raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
           end
-
+          
           require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
-
+          
           flutter_ios_podfile_setup
-
+          
           target 'Runner' do
             use_frameworks!
             use_modular_headers!
-
+          
             flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-          end
-
-          post_install do |installer|
-            installer.pods_project.targets.each do |target|
-              flutter_additional_ios_build_settings(target)
-              
-              # Set minimum deployment target for all pods
-              target.build_configurations.each do |config|
-                config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+            
+            post_install do |installer|
+              installer.pods_project.targets.each do |target|
+                flutter_additional_ios_build_settings(target)
+                
+                # Force the deployment target for all pods
+                target.build_configurations.each do |config|
+                  config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+                end
               end
             end
           end
           EOL
-          cd ..
-      - name: Install CocoaPods dependencies
-        script: |
-          cd ios
-          pod install --verbose
-          cd ..
-      - name: Update Xcode project settings
-        script: |
-          cd ios
-          echo "Setting deployment target in xcconfig files"
+          
+          # Update deployment target in xcconfig files
           echo "IPHONEOS_DEPLOYMENT_TARGET = 13.0" >> ./Flutter/Debug.xcconfig
           echo "IPHONEOS_DEPLOYMENT_TARGET = 13.0" >> ./Flutter/Release.xcconfig
           
-          # Create BuildSettings.xcconfig
-          cat > BuildSettings.xcconfig << EOL
-          // This file contains build settings that should override defaults
+          # Install pods
+          pod install --verbose
           
-          // Set minimum iOS version
-          IPHONEOS_DEPLOYMENT_TARGET = 13.0
-          
-          // Explicitly set Swift version if needed
-          SWIFT_VERSION = 5.0
-          EOL
-          
-          # Update deployment target in pbxproj file
-          PBXPROJ="Runner.xcodeproj/project.pbxproj"
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = .*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g' "$PBXPROJ"
-          
-          # Update build settings
-          xcrun xcodebuild -project Runner.xcodeproj -target Runner -showBuildSettings | grep DEPLOYMENT_TARGET
           cd ..
-      - name: Build iOS
+      - name: Direct Xcode Build
         script: |
-          flutter build ios \
-            --release \
-            --no-codesign \
-            --build-number=$(($(date +%s)/60)) \
-            --export-options-plist=ios/ExportOptions.plist
+          cd ios
+          
+          # Build with xcodebuild directly
+          xcodebuild clean build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination generic/platform=iOS \
+            -arch arm64 \
+            IPHONEOS_DEPLOYMENT_TARGET=13.0 \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -verbose
+          
+          cd ..
     artifacts:
       - build/ios/iphoneos/Runner.app
