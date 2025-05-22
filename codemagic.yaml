@@ -31,10 +31,24 @@ workflows:
         - google_credentials
       vars:
         FIREBASE_PROJECT: ${{ secrets.FIREBASE_PROJECT }}
+        BUNDLE_ID: "com.example.travelManager"
+        XCODE_WORKSPACE: "Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+        MIN_IOS_VERSION: "13.0"
     scripts:
       - name: Set up Flutter
         script: |
           flutter packages pub get
+      - name: Update iOS minimum deployment target
+        script: |
+          cd ios
+          sed -i '' 's/platform :ios, .*/platform :ios, '"'$MIN_IOS_VERSION'"'/' Podfile
+          cd ..
+      - name: Pod install
+        script: |
+          cd ios
+          pod install
+          cd ..
       - name: Build iOS
         script: |
           flutter build ios --release --no-codesign
