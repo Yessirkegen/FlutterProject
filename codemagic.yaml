@@ -21,3 +21,54 @@ workflows:
           flutter build apk --release
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
+
+  ios-workflow:
+    name: iOS Workflow
+    instance_type: mac_mini_m1
+    max_build_duration: 120
+    environment:
+      flutter: 3.19.6
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Flutter Setup
+        script: |
+          flutter clean
+          flutter pub get
+      - name: Fix iOS Configuration
+        script: |
+          # Сделать скрипт исполняемым и запустить его
+          chmod +x ios_fix.sh
+          ./ios_fix.sh
+          
+          # Показать обновленные файлы для диагностики
+          echo "Debug.xcconfig:"
+          cat ios/Flutter/Debug.xcconfig
+          
+          echo "Release.xcconfig:"
+          cat ios/Flutter/Release.xcconfig
+          
+          echo "AppFrameworkInfo.plist:"
+          cat ios/Flutter/AppFrameworkInfo.plist
+          
+          echo "Podfile:"
+          cat ios/Podfile
+      - name: Pod Install
+        script: |
+          cd ios
+          pod repo update
+          pod install
+          cd ..
+      - name: Build iOS
+        script: |
+          # Проверяем окружение перед сборкой
+          flutter doctor -v
+          
+          # Используем упрощенную команду сборки с явным указанием минимальной версии iOS
+          flutter build ios \
+            --release \
+            --no-codesign \
+            -- \
+            -destination generic/platform=iOS
+    artifacts:
+      - build/ios/iphoneos/Runner.app
