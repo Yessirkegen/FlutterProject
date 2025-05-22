@@ -101,8 +101,37 @@ workflows:
           cd ios
           pod install --verbose
           cd ..
+      - name: Update Xcode project settings
+        script: |
+          cd ios
+          echo "Setting deployment target in xcconfig files"
+          echo "IPHONEOS_DEPLOYMENT_TARGET = 13.0" >> ./Flutter/Debug.xcconfig
+          echo "IPHONEOS_DEPLOYMENT_TARGET = 13.0" >> ./Flutter/Release.xcconfig
+          
+          # Create BuildSettings.xcconfig
+          cat > BuildSettings.xcconfig << EOL
+          // This file contains build settings that should override defaults
+          
+          // Set minimum iOS version
+          IPHONEOS_DEPLOYMENT_TARGET = 13.0
+          
+          // Explicitly set Swift version if needed
+          SWIFT_VERSION = 5.0
+          EOL
+          
+          # Update deployment target in pbxproj file
+          PBXPROJ="Runner.xcodeproj/project.pbxproj"
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = .*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g' "$PBXPROJ"
+          
+          # Update build settings
+          xcrun xcodebuild -project Runner.xcodeproj -target Runner -showBuildSettings | grep DEPLOYMENT_TARGET
+          cd ..
       - name: Build iOS
         script: |
-          flutter build ios --release --no-codesign
+          flutter build ios \
+            --release \
+            --no-codesign \
+            --build-number=$(($(date +%s)/60)) \
+            --export-options-plist=ios/ExportOptions.plist
     artifacts:
       - build/ios/iphoneos/Runner.app

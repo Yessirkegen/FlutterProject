@@ -1,0 +1,7 @@
+// This file contains build settings that should override defaults
+
+// Set minimum iOS version
+IPHONEOS_DEPLOYMENT_TARGET = 13.0
+
+// Explicitly set Swift version if needed
+SWIFT_VERSION = 5.0 
