@@ -33,20 +33,34 @@ class TripProvider extends ChangeNotifier {
     await _localStorageService.init();
     
     // Listen for connectivity changes
-    _connectivityService.connectivityStream.listen((status) {
-      _isOnline = status != ConnectivityResult.none;
-      notifyListeners();
+    _connectivityService.connectivityStream.listen((status) async {
+      final wasOffline = !_isOnline;
+      final hasRealConnectivity = await _connectivityService.isConnected();
       
-      // Load trips when connectivity changes
-      if (_isOnline) {
-        loadTrips();
-      } else {
-        loadLocalTrips();
+      // Only change to online state if we have actual internet access
+      if (_isOnline != hasRealConnectivity) {
+        _isOnline = hasRealConnectivity;
+        notifyListeners();
+        
+        // If going from offline to online, first sync local changes then load trips
+        if (_isOnline && wasOffline) {
+          developer.log('Connection restored. Starting sync process...');
+          // First sync any offline changes
+          syncTrips().then((_) {
+            // Then load the latest data
+            loadTrips();
+          });
+        } else if (_isOnline) {
+          loadTrips();
+        } else {
+          loadLocalTrips();
+        }
       }
     });
     
     // Check initial connectivity
     _isOnline = await _connectivityService.isConnected();
+    developer.log('Initial connectivity state: ${_isOnline ? 'Online' : 'Offline'}');
     
     // Load initial data
     if (_isOnline) {
@@ -270,6 +284,7 @@ class TripProvider extends ChangeNotifier {
   Future<bool> syncTrips() async {
     if (!_isOnline) {
       _setError('Cannot sync while offline');
+      developer.log('Sync attempted while offline');
       return false;
     }
     
@@ -279,16 +294,57 @@ class TripProvider extends ChangeNotifier {
     try {
       // Get all local trips
       final localTrips = _localStorageService.getAllTrips();
+      developer.log('Found ${localTrips.length} local trips to sync');
       
-      // Sync to Firebase
-      final result = await _tripRepository.syncTrips(localTrips);
+      // Filter for local trips that need syncing (those with local_ prefix in ID)
+      final tripsToSync = localTrips.where((trip) {
+        final id = trip[AppConstants.tripId]?.toString() ?? '';
+        return id.startsWith('local_') || !_tripExistsInFirebase(id);
+      }).toList();
+      
+      if (tripsToSync.isEmpty) {
+        developer.log('No local trips need syncing');
+        _setLoading(false);
+        return true;
+      }
+      
+      developer.log('Syncing ${tripsToSync.length} trips to Firebase');
+      
+      // Retry sync operation up to 3 times with increasing delays
+      bool result = false;
+      int retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries && !result) {
+        try {
+          if (retryCount > 0) {
+            developer.log('Retry attempt ${retryCount} for syncing trips');
+            // Wait with exponential backoff
+            await Future.delayed(Duration(seconds: retryCount * 2));
+          }
+          
+          // Sync to Firebase
+          result = await _tripRepository.syncTrips(tripsToSync);
+          
+          if (result) {
+            developer.log('Sync successful on attempt ${retryCount + 1}');
+            break;
+          }
+        } catch (e) {
+          developer.log('Sync attempt ${retryCount + 1} failed: $e');
+          // Continue to next retry
+        }
+        retryCount++;
+      }
       
       // If successful, reload trips from Firebase
       if (result) {
         await loadTrips();
+        return true;
+      } else {
+        _setError('Sync failed after $maxRetries attempts');
+        return false;
       }
-      
-      return result;
     } catch (e) {
       _setError('Sync failed: ${e.toString()}');
       developer.log('Error syncing trips: $e');
@@ -296,6 +352,13 @@ class TripProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+  
+  // Helper to check if a trip exists in Firebase
+  bool _tripExistsInFirebase(String tripId) {
+    // If the ID looks like a Firebase ID (not a local ID)
+    // but we don't have confirmation it's in Firebase, assume it needs syncing
+    return !tripId.startsWith('local_');
   }
   
   // Reset filters and load all trips
