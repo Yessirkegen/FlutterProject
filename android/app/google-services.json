@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "896068345728",
+    "project_id": "cursor-33623",
+    "storage_bucket": "cursor-33623.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:896068345728:android:937d011483ba692e7e6b65",
+        "android_client_info": {
+          "package_name": "com.example.cpmd_endterm"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAT6qpiBtUgBldiMzXYwveT0r3MYAw2-UU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:896068345728:android:f0ed788c9912f0967e6b65",
+        "android_client_info": {
+          "package_name": "com.example.travel.trav"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAT6qpiBtUgBldiMzXYwveT0r3MYAw2-UU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:896068345728:android:039718dde54d22997e6b65",
+        "android_client_info": {
+          "package_name": "com.travelapp.travel_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAT6qpiBtUgBldiMzXYwveT0r3MYAw2-UU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
