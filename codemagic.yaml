@@ -6,121 +6,18 @@ workflows:
     environment:
       flutter: 3.19.6
       xcode: latest
-      groups:
-        - google_credentials
-      vars:
-        FIREBASE_PROJECT: ${{ secrets.FIREBASE_PROJECT }}
-    scripts:
-      - name: Set up Flutter
-        script: |
-          flutter packages pub get
-      - name: Build APK
-        script: |
-          flutter build apk --release
-    artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
-
-  ios-workflow:
-    name: iOS Workflow
-    instance_type: mac_mini_m1
-    max_build_duration: 120
-    environment:
-      flutter: 3.19.6
-      xcode: latest
-      cocoapods: default
-      vars:
-        BUNDLE_ID: "com.example.travelManager"
-        XCODE_WORKSPACE: "Runner.xcworkspace"
-        XCODE_SCHEME: "Runner"
+      java: 11
     scripts:
       - name: Set up Flutter
         script: |
           flutter clean
           flutter pub get
-      - name: Configure iOS project
+      - name: Build Android APK
         script: |
-          cd ios
+          # Print environment information for debugging
+          flutter doctor -v
           
-          # Update all deployment targets to iOS 13.0
-          find . -name "*.pbxproj" -exec plutil -convert xml1 {} \; -exec sed -i '' 's/\([0-9]\{1,2\}\)\.\([0-9]\{1,2\}\)/13.0/g' {} \;
-          
-          # Create a minimal Podfile
-          cat > Podfile << EOL
-          platform :ios, '13.0'
-          
-          # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
-          ENV['COCOAPODS_DISABLE_STATS'] = 'true'
-          
-          project 'Runner', {
-            'Debug' => :debug,
-            'Profile' => :release,
-            'Release' => :release,
-          }
-          
-          workspace 'Runner.xcworkspace'
-          
-          def flutter_root
-            generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
-            unless File.exist?(generated_xcode_build_settings_path)
-              raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
-            end
-          
-            File.foreach(generated_xcode_build_settings_path) do |line|
-              matches = line.match(/FLUTTER_ROOT\=(.*)/)
-              return matches[1].strip if matches
-            end
-            raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
-          end
-          
-          require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
-          
-          flutter_ios_podfile_setup
-          
-          target 'Runner' do
-            use_frameworks!
-            use_modular_headers!
-          
-            flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-            
-            post_install do |installer|
-              installer.pods_project.targets.each do |target|
-                flutter_additional_ios_build_settings(target)
-                
-                # Force the deployment target for all pods
-                target.build_configurations.each do |config|
-                  config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-                end
-              end
-            end
-          end
-          EOL
-          
-          # Update deployment target in xcconfig files
-          echo "IPHONEOS_DEPLOYMENT_TARGET = 13.0" >> ./Flutter/Debug.xcconfig
-          echo "IPHONEOS_DEPLOYMENT_TARGET = 13.0" >> ./Flutter/Release.xcconfig
-          
-          # Install pods
-          pod install --verbose
-          
-          cd ..
-      - name: Direct Xcode Build
-        script: |
-          cd ios
-          
-          # Build with xcodebuild directly
-          xcodebuild clean build \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination generic/platform=iOS \
-            -arch arm64 \
-            IPHONEOS_DEPLOYMENT_TARGET=13.0 \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            -verbose
-          
-          cd ..
+          # Build release APK
+          flutter build apk --release
     artifacts:
-      - build/ios/iphoneos/Runner.app
+      - build/app/outputs/flutter-apk/app-release.apk
