@@ -8,8 +8,7 @@ workflows:
       - name: Install dependencies
         script: flutter pub get
 
-      - name: Build Android APK
-        script: flutter build apk --release
+
 
       - name: Build iOS (optional, for .ipa)
         script: |
