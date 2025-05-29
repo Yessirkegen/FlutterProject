@@ -6,6 +6,9 @@ workflows:
       flutter: stable
       xcode: latest
       cocoapods: default
+      vars:
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
@@ -15,14 +18,25 @@ workflows:
           pod install
       - name: Build iOS for simulator
         script: |
-          # Build for iOS simulator
-          flutter build ios --debug --simulator
+          # Prepare Flutter
+          flutter clean
+          flutter pub get
           
-          # Create the archive
-          cd build/ios/Debug-iphonesimulator
+          # Build using xcodebuild
+          cd ios
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 14 Pro Max' \
+            build
+          
+          # Create zip archive
+          cd build/Debug-iphonesimulator
           zip -r "app.zip" "Runner.app"
           
-          # Move the archive to artifacts directory
+          # Move to artifacts directory
           mkdir -p ../../../build/ios/artifact
           mv app.zip ../../../build/ios/artifact/
     artifacts:
