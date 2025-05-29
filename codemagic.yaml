@@ -10,8 +10,9 @@ workflows:
       - name: Build for iOS simulator (x86_64)
         script: |
           flutter build ios --simulator
-
+          
+          mkdir -p build/ios/ipa
           cd build/ios/Debug-iphonesimulator
-          zip -r ../../ios/ipa/Runner.app.zip Runner.app
+          zip -r ../ipa/Runner.app.zip Runner.app
     artifacts:
       - build/ios/ipa/Runner.app.zip
