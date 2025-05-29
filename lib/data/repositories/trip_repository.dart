@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:travel_manager/core/app_constants.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class TripRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -56,30 +57,35 @@ class TripRepository {
       return null;
     }
   }
-  
-  // Add a new trip
   Future<String?> addTrip(Map<String, dynamic> trip) async {
     if (_userId == null) return null;
-    
+
     try {
-      // Add user ID and timestamp
-      trip[AppConstants.tripUserId] = _userId;
-      trip[AppConstants.tripCreatedAt] = FieldValue.serverTimestamp();
-      
-      // Normalize field names
-      final normalizedTrip = _normalizeTrip(trip);
-      
+      // Create remote trip data with server timestamp
+      final remoteTrip = Map<String, dynamic>.from(trip)
+        ..[AppConstants.tripUserId] = _userId
+        ..[AppConstants.tripCreatedAt] = FieldValue.serverTimestamp();
+
+      // Create local trip data with client timestamp
+      final localTrip = Map<String, dynamic>.from(trip)
+        ..[AppConstants.tripUserId] = _userId
+        ..[AppConstants.tripCreatedAt] = DateTime.now().toIso8601String();
+
+      // Save to Firestore first to get the ID
       final docRef = await _firestore
           .collection(AppConstants.tripsCollection)
-          .add(normalizedTrip);
-          
+          .add(remoteTrip);
+
+      // Add the Firestore ID to local trip data
+      localTrip[AppConstants.tripId] = docRef.id;
+
       return docRef.id;
     } catch (e) {
       print('Error adding trip: $e');
       return null;
     }
   }
-  
+
   // Update an existing trip
   Future<bool> updateTrip(String tripId, Map<String, dynamic> trip) async {
     if (_userId == null) return false;

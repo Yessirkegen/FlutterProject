@@ -123,22 +123,27 @@ class TripProvider extends ChangeNotifier {
       // Ensure we're working with a copy, not the original object
       final tripData = Map<String, dynamic>.from(trip);
       
+      String? tripId;
       if (_isOnline) {
-        // Add to Firebase
-        final tripId = await _tripRepository.addTrip(tripData);
+        // Add to Firebase and get the ID
+        tripId = await _tripRepository.addTrip(tripData);
         if (tripId != null) {
           tripData[AppConstants.tripId] = tripId;
+          // Add local timestamp for Hive storage
+          tripData[AppConstants.tripCreatedAt] = DateTime.now().toIso8601String();
         }
-      } else if (!tripData.containsKey(AppConstants.tripId) || tripData[AppConstants.tripId] == null) {
-        // Generate a local ID if offline and no ID exists
-        tripData[AppConstants.tripId] = 'local_${DateTime.now().millisecondsSinceEpoch}';
+      } else {
+        // Generate a local ID if offline
+        tripId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+        tripData[AppConstants.tripId] = tripId;
+        tripData[AppConstants.tripCreatedAt] = DateTime.now().toIso8601String();
       }
       
       // Always save locally, regardless of online status
       await _localStorageService.saveTrip(tripData);
       
       _trips.add(tripData);
-      developer.log('Added new trip: ${tripData[AppConstants.tripId]}');
+      developer.log('Added new trip: $tripId');
       notifyListeners();
       return true;
     } catch (e) {

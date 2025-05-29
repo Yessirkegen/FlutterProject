@@ -63,6 +63,15 @@ class LocalStorageService {
     try {
       // Make a clean copy of the trip data for storage
       final tripToSave = Map<String, dynamic>.from(trip);
+      
+      // Ensure createdAt is a string timestamp for Hive storage
+      if (tripToSave[AppConstants.tripCreatedAt] == null) {
+        tripToSave[AppConstants.tripCreatedAt] = DateTime.now().toIso8601String();
+      } else if (tripToSave[AppConstants.tripCreatedAt] is! String) {
+        // Convert any non-string timestamp to ISO string
+        tripToSave[AppConstants.tripCreatedAt] = DateTime.now().toIso8601String();
+      }
+      
       await _tripsBox.put(id, tripToSave);
       developer.log('Saved trip with ID: $id to local storage');
     } catch (e) {
