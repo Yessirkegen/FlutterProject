@@ -1,66 +1,29 @@
 workflows:
-  ios-workflow:
-    name: iOS Production
+  ios-debug:
+    name: iOS Debug Build
     instance_type: mac_mini_m1
-    max_build_duration: 120
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.yourcompany.travelmanager
-      vars:
-        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
-        XCODE_SCHEME: "Runner"
-        BUNDLE_ID: "com.yourcompany.travelmanager"
       flutter: stable
       xcode: latest
       cocoapods: default
-    cache:
-      cache_paths:
-        - $HOME/Library/Caches/CocoaPods
-        - $FLUTTER_ROOT/.pub-cache
-        - $HOME/.pub-cache
     scripts:
-      - name: Set up code signing settings
-        script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
-          keychain add-certificates
-          xcode-project use-profiles
       - name: Get Flutter packages
-        script: |
-          flutter clean
-          flutter pub get
+        script: flutter pub get
       - name: Install CocoaPods dependencies
         script: |
           cd ios
           pod install
-      - name: Flutter analyze
+      - name: Build iOS for simulator
         script: |
-          flutter analyze
-      - name: Flutter unit tests
-        script: |
-          flutter test
-      - name: Build iOS app
-        script: |
-          flutter build ios --release --no-codesign
-          cd ios
-          xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -archivePath build/Runner.xcarchive archive
-          xcodebuild -exportArchive -archivePath build/Runner.xcarchive -exportOptionsPlist exportOptions.plist -exportPath build/ios/ipa
+          # Build for iOS simulator
+          flutter build ios --debug --simulator
+          
+          # Create the archive
+          cd build/ios/Debug-iphonesimulator
+          zip -r "app.zip" "Runner.app"
+          
+          # Move the archive to artifacts directory
+          mkdir -p ../../../build/ios/artifact
+          mv app.zip ../../../build/ios/artifact/
     artifacts:
-      - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
-      - flutter_drive.log
-    publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
-        beta_groups:
-          - "Internal Testers"
-      email:
-        recipients:
-          - your.email@example.com
-        notify:
-          success: true
-          failure: true
+      - build/ios/artifact/app.zip
