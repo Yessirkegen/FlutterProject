@@ -9,10 +9,13 @@ workflows:
         script: flutter pub get
       - name: Build for iOS simulator (x86_64)
         script: |
-          flutter build ios --simulator
+          flutter build ios --simulator --no-tree-shake-icons
+          
+          echo "Проверяем содержимое Runner.app:"
+          ls -la build/ios/Debug-iphonesimulator/Runner.app
           
           mkdir -p build/ios/ipa
           cd build/ios/Debug-iphonesimulator
-          zip -r ../ipa/Runner.app.zip Runner.app
+          zip -r ../ipa/Runner.app.zip Runner.app/*
     artifacts:
       - build/ios/ipa/Runner.app.zip
