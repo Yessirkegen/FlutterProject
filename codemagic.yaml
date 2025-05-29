@@ -1,21 +1,28 @@
 workflows:
-  ios-simulator:
-    name: iOS Simulator Build
+  ios-simulator-build:
+    name: Build iOS Simulator App
+    max_build_duration: 60
+
     environment:
       flutter: stable
       xcode: latest
-      cocoapods: default
+
     scripts:
-      - name: Install dependencies
+      # 1. Получаем зависимости
+      - name: Get Flutter packages
         script: |
           flutter pub get
-          cd ios && pod install && cd ..
+
+      # 2. Собираем для iOS-симулятора
       - name: Build for iOS simulator
         script: |
-          flutter build ios --debug --no-codesign --simulator
+          # flutter build ios --simulator формирует .app в build/ios/iphonesimulator
+          flutter build ios --simulator --no-codesign
           
-          cd build/ios/Debug-iphonesimulator
-          mkdir -p ../ipa
-          zip -r ../ipa/Runner.app.zip Runner.app
+          # Упаковываем .app в Runner.app.zip
+          cd build/ios/iphonesimulator
+          zip -r Runner.app.zip Runner.app
+
     artifacts:
-      - build/ios/ipa/Runner.app.zip
+      # Артефакт можно скачать после сборки
+      - build/ios/iphonesimulator/Runner.app.zip
