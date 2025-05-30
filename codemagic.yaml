@@ -1,31 +1,12 @@
 workflows:
-  ios-simulator-debug:
-    name: iOS Simulator Debug (.app for Appetize)
-    max_build_duration: 60
+  ios-release-no-shorebird:
+    name: iOS Release (No Shorebird)
+    environment:
+      flutter: stable
+      xcode: latest
     scripts:
-      - name: Install CocoaPods
-        script: |
-          cd ios
-          pod install
-      - name: Build Debug .app for Simulator
-        script: |
-          cd ios
-          # Build the unsigned .app for iOS Simulator (Debug)
-          xcodebuild -workspace "Runner.xcworkspace" \
-                     -scheme "$XCODE_SCHEME" \
-                     -configuration Debug \
-                     -sdk iphonesimulator \
-                     -derivedDataPath build
-      - name: Zip the .app for upload
-        script: |
-          cd ios/build/Build/Products/Debug-iphonesimulator
-          zip -r Runner.app.zip Runner.app
+      - flutter build ios --simulator
+      - mkdir -p build/ios/ipa
+      - zip -r build/ios/ipa/Runner.app.zip build/ios/iphonesimulator/Runner.app
     artifacts:
-      - ios/build/Build/Products/Debug-iphonesimulator/Runner.app.zip
-    publishing:
-      scripts:
-        - name: Publish to Appetize
-          script: |
-            zipPath="ios/build/Build/Products/Debug-iphonesimulator/Runner.app.zip"
-            curl --location --request POST "https://$API_TOKEN@api.appetize.io/v1/apps/$APP_PUBLIC_KEY" \
-                 --form "file=@$zipPath"
+      - build/ios/ipa/Runner.app.zip
