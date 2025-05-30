@@ -2,11 +2,6 @@ workflows:
   ios-simulator-debug:
     name: iOS Simulator Debug (.app for Appetize)
     max_build_duration: 60
-    environment:
-      xcode: Xcode 16.3.x       # use latest Xcode 16.3
-      flutter: 3.19.6          # specify Flutter 3.19.6
-      vars:
-        XCODE_SCHEME: "Runner" # your Xcode scheme (usually Runner)
     scripts:
       - name: Install CocoaPods
         script: |
