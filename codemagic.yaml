@@ -1,36 +1,36 @@
 workflows:
   ios-simulator-debug:
-    name: "iOS Simulator Debug Build"
-    instance_type: mac_mini_m2
-
+    name: iOS Simulator Debug (.app for Appetize)
+    max_build_duration: 60
     environment:
-      flutter: stable
-      xcode: latest
-      cocoapods: default
-
+      xcode: Xcode 16.3.x       # use latest Xcode 16.3
+      flutter: 3.19.6          # specify Flutter 3.19.6
+      vars:
+        XCODE_SCHEME: "Runner" # your Xcode scheme (usually Runner)
     scripts:
-      - name: Get Flutter packages
-        script: flutter pub get
-
-      - name: Install iOS pods
+      - name: Install CocoaPods
         script: |
           cd ios
-          pod install --repo-update
-          cd ..
-
-      - name: Build .app for iOS simulator
+          pod install
+      - name: Build Debug .app for Simulator
         script: |
-          # Собираем Debug-версию .app для симулятора (x86_64)
-          flutter build ios \
-            --simulator \
-            --no-codesign \
-            --debug
-
-          # Переходим в папку с результатом
-          cd build/ios/iphonesimulator
-
-          # Упаковываем .app в Runner.app.zip
+          cd ios
+          # Build the unsigned .app for iOS Simulator (Debug)
+          xcodebuild -workspace "Runner.xcworkspace" \
+                     -scheme "$XCODE_SCHEME" \
+                     -configuration Debug \
+                     -sdk iphonesimulator \
+                     -derivedDataPath build
+      - name: Zip the .app for upload
+        script: |
+          cd ios/build/Build/Products/Debug-iphonesimulator
           zip -r Runner.app.zip Runner.app
-
     artifacts:
-      - build/ios/iphonesimulator/Runner.app.zip
+      - ios/build/Build/Products/Debug-iphonesimulator/Runner.app.zip
+    publishing:
+      scripts:
+        - name: Publish to Appetize
+          script: |
+            zipPath="ios/build/Build/Products/Debug-iphonesimulator/Runner.app.zip"
+            curl --location --request POST "https://$API_TOKEN@api.appetize.io/v1/apps/$APP_PUBLIC_KEY" \
+                 --form "file=@$zipPath"
