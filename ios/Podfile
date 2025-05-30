@@ -35,31 +35,23 @@ target 'Runner' do
 end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
-    # Стандартные Flutter-настройки
     flutter_additional_ios_build_settings(target)
 
-    # Ваши разрешения и минимальная версия iOS
-    target.build_configurations.each do |config|
-      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
-      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] += [
-        'PERMISSION_LOCATION=1',
-        'PERMISSION_NOTIFICATIONS=1',
-        'PERMISSION_CAMERA=1',
-        'PERMISSION_PHOTOS=1'
-      ]
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+    # 1) Убираем неподдерживаемые флаги -GCC_WARN_INHIBIT_ALL_WARNINGS у BoringSSL-GRPC
+    if target.name == 'BoringSSL-GRPC'
+      target.source_build_phase.files.each do |file|
+        if file.settings && file.settings['COMPILER_FLAGS']
+          flags = file.settings['COMPILER_FLAGS'].split
+          flags.reject! { |f| f == '-GCC_WARN_INHIBIT_ALL_WARNINGS' }
+          file.settings['COMPILER_FLAGS'] = flags.join(' ')
+        end
+      end
     end
 
-    # Убираем неподдерживаемые флаги -G у таргета BoringSSL-GRPC
-    if target.name == 'BoringSSL-GRPC'
-      target.build_configurations.each do |config|
-        next unless config.build_settings['OTHER_CFLAGS']
-
-        flags = config.build_settings['OTHER_CFLAGS'].split
-        # удаляем любые флаги, начинающиеся с "-G"
-        flags.reject! { |f| f.start_with?('-G') }
-        config.build_settings['OTHER_CFLAGS'] = flags.join(' ')
-      end
+    # 2) Отключаем сборку arm64 для симуляторов (x86_64 покажется в сборке)
+    target.build_configurations.each do |config|
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
     end
   end
 end
