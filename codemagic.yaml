@@ -1,28 +1,41 @@
 workflows:
-  ios-simulator-build:
-    name: Build iOS Simulator App
-    max_build_duration: 60
-
+  ios-simulator-debug:
+    name: "iOS Simulator Debug Build"  # Descriptive name for the workflow
+    max_build_duration: 60            # Maximum build time in minutes (increase if needed)
+    instance_type: mac_mini_m2        # Use an Apple Mac mini M2 build machine (macOS)
     environment:
-      flutter: stable
-      xcode: latest
-
+      flutter: stable                # Use Flutter stable channel (ensure Flutter is available)
+      xcode: latest                  # Use the latest Xcode version available on Codemagic
+      cocoapods: default             # Use the default CocoaPods installation on the macOS image
+      vars:
+        # Define workspace and scheme for Xcode build (adjust if project uses custom names)
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"  # Path to the iOS Xcode workspace
+        XCODE_SCHEME: "Runner"                     # Xcode scheme name (default for Flutter apps is "Runner")
     scripts:
-      # 1. Получаем зависимости
-      - name: Get Flutter packages
+      - name: Install Flutter dependencies
         script: |
+          # Fetch Flutter packages listed in pubspec.yaml
           flutter pub get
-
-      # 2. Собираем для iOS-симулятора
-      - name: Build for iOS simulator
+      - name: Install CocoaPods dependencies
         script: |
-          # flutter build ios --simulator формирует .app в build/ios/iphonesimulator
-          flutter build ios --simulator --no-codesign
-          
-          # Упаковываем .app в Runner.app.zip
-          cd build/ios/iphonesimulator
-          zip -r Runner.app.zip Runner.app
-
+          # Install iOS pods (e.g., Firebase Auth, Firestore) defined in Podfile
+          cd ios && pod install
+      - name: Build iOS Simulator Debug .app
+        script: |
+          # Build the app for the iOS Simulator (Debug mode, unsigned)
+          xcodebuild -workspace "$XCODE_WORKSPACE" \
+                     -scheme "$XCODE_SCHEME" \
+                     -configuration Debug \
+                     -sdk iphonesimulator \
+                     -destination 'generic/platform=iOS Simulator' \
+                     ONLY_ACTIVE_ARCH=NO \                  # Build all archs (ensures x86_64 slice for simulator):contentReference[oaicite:4]{index=4}
+                     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \  # Disable code signing for simulator build
+                     -derivedDataPath ios/output            # Output build products to ios/output directory
+      - name: Archive .app for Appetize
+        script: |
+          # Zip the built .app bundle into an archive for distribution
+          cd ios/output/Build/Products/Debug-iphonesimulator
+          zip -r ios_app.zip "$XCODE_SCHEME.app"
     artifacts:
-      # Артефакт можно скачать после сборки
-      - build/ios/iphonesimulator/Runner.app.zip
+      # Save the ZIP archive as a build artifact (contains Runner.app for iOS simulator)
+      - ios/output/Build/Products/Debug-iphonesimulator/*.zip
